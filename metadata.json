@@ -1,0 +1,8 @@
+{
+  "name": "GeoTag Photo Editor",
+  "description": "Aplikasi untuk menggabungkan foto dengan watermark lokasi atau menambahkan geotag (lokasi, tanggal, jam) pada foto secara otomatis.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}
