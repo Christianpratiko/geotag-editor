@@ -742,9 +742,7 @@ function CombineImages() {
       
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          files: [file],
-          title: 'Bagikan Gambar',
-          text: 'Gambar hasil gabungan GeoTag Photo Editor',
+          files: [file]
         });
         setDownloadMessage('✅ Menu bagikan berhasil dibuka!');
       } else {
