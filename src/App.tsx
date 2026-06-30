@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, MapPin, Calendar, Clock, Download, Image as ImageIcon, Plus, RefreshCw, Layers, Search, X, ThermometerSun, ChevronLeft } from 'lucide-react';
+import { Camera, MapPin, Calendar, Clock, Download, Image as ImageIcon, Plus, RefreshCw, Layers, Search, X, ThermometerSun, ChevronLeft, Share2, Loader2 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 
 // Helper to crop image
@@ -639,6 +639,8 @@ function CombineImages() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
 
+  const [isCropping, setIsCropping] = useState(false);
+
   const handlePhoto1 = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const fileUrl = URL.createObjectURL(e.target.files[0]);
@@ -662,14 +664,23 @@ function CombineImages() {
   };
 
   const completeCropCombine = async () => {
-    if (croppingTarget === 'photo1' && photo1Url && croppedAreaPixels) {
-      const croppedUrl = await getCroppedImg(photo1Url, croppedAreaPixels);
-      setCroppedImage1(croppedUrl);
-      setCroppingTarget(null);
-    } else if (croppingTarget === 'photo2' && photo2Url && croppedAreaPixels) {
-      const croppedUrl = await getCroppedImg(photo2Url, croppedAreaPixels);
-      setCroppedImage2(croppedUrl);
-      setCroppingTarget(null);
+    setIsCropping(true);
+    // Allow UI to update before heavy operation
+    await new Promise(resolve => setTimeout(resolve, 50));
+    try {
+      if (croppingTarget === 'photo1' && photo1Url && croppedAreaPixels) {
+        const croppedUrl = await getCroppedImg(photo1Url, croppedAreaPixels);
+        setCroppedImage1(croppedUrl);
+        setCroppingTarget(null);
+      } else if (croppingTarget === 'photo2' && photo2Url && croppedAreaPixels) {
+        const croppedUrl = await getCroppedImg(photo2Url, croppedAreaPixels);
+        setCroppedImage2(croppedUrl);
+        setCroppingTarget(null);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsCropping(false);
     }
   };
 
@@ -722,6 +733,32 @@ function CombineImages() {
     }
   };
 
+  const shareToWhatsApp = async () => {
+    if (!previewUrl) return;
+    try {
+      const response = await fetch(previewUrl);
+      const blob = await response.blob();
+      const file = new File([blob], `combineSnap-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Bagikan Gambar',
+          text: 'Gambar hasil gabungan GeoTag Photo Editor',
+        });
+        setDownloadMessage('✅ Menu bagikan berhasil dibuka!');
+      } else {
+        setDownloadMessage('❌ Browser tidak mendukung bagikan file langsung.');
+      }
+      setTimeout(() => setDownloadMessage(null), 4000);
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        setDownloadMessage('❌ Gagal membagikan gambar.');
+        setTimeout(() => setDownloadMessage(null), 4000);
+      }
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
       {/* Toast Notification */}
@@ -750,8 +787,11 @@ function CombineImages() {
              </span>
           </div>
           <div className="p-4 bg-slate-900 flex justify-end gap-3 text-white border-t border-slate-800 pb-8">
-             <button onClick={() => { setCroppingTarget(null); setPhoto1Url(null); setPhoto2Url(null); }} className="px-5 py-2.5 font-medium bg-slate-800 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-colors">Batal</button>
-             <button onClick={completeCropCombine} className="px-5 py-2.5 font-bold bg-indigo-600 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-lg shadow-indigo-600/30">Crop & Selesai</button>
+             <button disabled={isCropping} onClick={() => { setCroppingTarget(null); setPhoto1Url(null); setPhoto2Url(null); }} className="px-5 py-2.5 font-medium bg-slate-800 rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-colors disabled:opacity-50">Batal</button>
+             <button disabled={isCropping} onClick={completeCropCombine} className="px-5 py-2.5 font-bold bg-indigo-600 rounded-lg hover:bg-indigo-700 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-lg shadow-indigo-600/30 flex items-center gap-2 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed">
+               {isCropping && <Loader2 className="w-4 h-4 animate-spin" />}
+               {isCropping ? 'Memproses...' : 'Crop & Selesai'}
+             </button>
           </div>
         </div>
       )}
@@ -818,13 +858,22 @@ function CombineImages() {
         </div>
 
         {croppedImage1 && croppedImage2 && (
-          <button 
-            onClick={downloadImage}
-            className="mt-4 w-full flex items-center justify-center gap-3 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 active:scale-[0.98]"
-          >
-            <Download className="w-5 h-5" />
-            GABUNGKAN & SIMPAN
-          </button>
+          <div className="mt-4 flex gap-3">
+            <button 
+              onClick={downloadImage}
+              className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 active:scale-[0.98]"
+            >
+              <Download className="w-5 h-5" />
+              SIMPAN
+            </button>
+            <button 
+              onClick={shareToWhatsApp}
+              className="flex-none px-6 flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition shadow-lg shadow-emerald-200 active:scale-[0.98]"
+              title="Bagikan ke WhatsApp/Aplikasi lain"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+          </div>
         )}
       </div>
 
