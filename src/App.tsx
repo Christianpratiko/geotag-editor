@@ -637,6 +637,7 @@ function CombineImages() {
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
 
   const handlePhoto1 = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -708,14 +709,28 @@ function CombineImages() {
 
   const downloadImage = () => {
     if (!previewUrl) return;
-    const link = document.createElement('a');
-    link.download = `combineSnap-${Date.now()}.jpg`;
-    link.href = previewUrl;
-    link.click();
+    try {
+      const link = document.createElement('a');
+      link.download = `combineSnap-${Date.now()}.jpg`;
+      link.href = previewUrl;
+      link.click();
+      setDownloadMessage('✅ Gambar berhasil digabung dan mulai diunduh!');
+      setTimeout(() => setDownloadMessage(null), 4000);
+    } catch (e) {
+      setDownloadMessage('❌ Gagal mengunduh gambar.');
+      setTimeout(() => setDownloadMessage(null), 4000);
+    }
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative">
+      {/* Toast Notification */}
+      {downloadMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl shadow-indigo-500/20 font-medium animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border border-slate-700">
+          {downloadMessage}
+        </div>
+      )}
+
       {croppingTarget !== null && (croppingTarget === 'photo1' ? photo1Url : photo2Url) && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col">
           <div className="flex-1 relative">
